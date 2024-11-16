@@ -140,6 +140,9 @@ const Dashboard = () => {
               </div>
 
               <div className="bg-gray-100 p-8 rounded-xl shadow-xl">
+                <h3 className="text-2xl font-semibold text-gray-800 text-center mb-6">
+                  Programming Languages Used
+                </h3>
                 <DonutChart username={userData.login} />
               </div>
             </div>

@@ -71,9 +71,6 @@ const DonutChart: React.FC<DonutChartProps> = ({ username }) => {
 
   return (
     <div className="bg-gray-100 p-8 rounded-xl shadow-xl mt-8">
-      <h3 className="text-2xl font-semibold text-gray-800 text-center mb-6">
-        Programming Languages Used
-      </h3>
       {languageData ? (
         <Pie
           data={languageData}

@@ -70,17 +70,34 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">
-          Login to GitHub
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#041e42] relative overflow-hidden">
+      {/* Background Geometric Shapes */}
+      <div className="absolute top-0 left-0 w-full h-full">
+        {/* Large Circles */}
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-indigo-700 rounded-full opacity-20"></div>
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-indigo-500 rounded-full opacity-25"></div>
+
+        {/* Rectangles */}
+        <div className="absolute top-60 right-0 w-96 h-48 bg-blue-700 opacity-20"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-32 bg-blue-500 opacity-20"></div>
+      </div>
+
+      {/* Title Above the Login Card */}
+      <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 tracking-wide text-center">
+        GitHub Dashboard Login
+      </h1>
+
+      {/* Login Card */}
+      <div className="w-full max-w-md sm:max-w-sm md:max-w-md p-4 sm:p-6 md:p-8 bg-white rounded-lg shadow-xl z-10">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-center text-gray-800 mb-6">
+          Sign In
         </h2>
 
         <form onSubmit={handleLogin}>
-          <div className="mb-4">
+          <div className="mb-5">
             <label
               htmlFor="username"
-              className="block text-sm font-medium text-gray-600"
+              className="block text-sm sm:text-base font-medium text-gray-700"
             >
               GitHub Username
             </label>
@@ -90,37 +107,44 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter GitHub Username"
-              className="w-full px-4 py-2 mt-1 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-700"
+              className="w-full px-4 py-2 mt-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 text-sm sm:text-base"
             />
+          </div>
+
+          {/* OR Text */}
+          <div className="text-center text-gray-500 font-medium mb-4 text-sm sm:text-base">
+            OR
           </div>
 
           <div className="mb-6">
             <label
               htmlFor="token"
-              className="block text-sm font-medium text-gray-600"
+              className="block text-sm sm:text-base font-medium text-gray-700"
             >
               GitHub Personal Access Token (optional)
             </label>
             <input
-              type="text"
+              type="password"
               id="token"
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="Enter Personal Access Token"
-              className="w-full px-4 py-2 mt-1 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-700"
+              className="w-full px-4 py-2 mt-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 text-sm sm:text-base"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200"
+            className="w-full py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg sm:text-base hover:bg-indigo-700 transition duration-150 ease-in-out"
           >
             Login
           </button>
         </form>
 
         {error && (
-          <p className="mt-4 text-sm text-red-500 text-center">{error}</p>
+          <p className="mt-4 text-center text-sm sm:text-base text-red-500">
+            {error}
+          </p>
         )}
       </div>
     </div>

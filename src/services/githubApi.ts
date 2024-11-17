@@ -13,25 +13,18 @@ api.interceptors.request.use((config) => {
 });
 
 export const fetchUserData = async (): Promise<any> => {
-  const username = sessionStorage.getItem('githubUsername');
-  const token = sessionStorage.getItem('githubToken');
-  
-  if (!username && !token) {
-    throw new Error('No GitHub username or token provided.');
+  const token = sessionStorage.getItem("githubToken");
+
+  if (!token) {
+    throw new Error("No GitHub token found.");
   }
 
   try {
-    if (token) {
-      const response = await api.get(`/users/${username}`);
-      return response.data;
-    } else if (username) {
-      const response = await axios.get(`https://api.github.com/users/${username}`);
-      return response.data;
-    } else {
-      throw new Error('No GitHub username provided.');
-    }
+    const response = await axios.get("https://api.github.com/user", {
+      headers: { Authorization: `token ${token}` },
+    });
+    return response.data;
   } catch (error) {
-    console.error('Error fetching user data', error);
-    throw error;
+    throw new Error("Failed to fetch user data.");
   }
 };

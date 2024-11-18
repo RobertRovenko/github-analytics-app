@@ -31,25 +31,40 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
+  // Dynamically calculate the months array based on the current month
+  const getMonths = () => {
+    const now = new Date();
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    let dynamicMonths = [];
+    for (let i = 0; i < 12; i++) {
+      dynamicMonths.push(months[(now.getMonth() - i + 12) % 12]);
+    }
+    return dynamicMonths.reverse(); // Reverse to make the current month last
+  };
+
+  const months = getMonths();
 
   const fetchCommitActivity = async () => {
     const commitCounts = Array(12).fill(0);
     const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1); // Start of the current year
+    const oneYearAgo = new Date(
+      now.getFullYear() - 1,
+      now.getMonth() + 1, // Set to start of last year's current month
+      1
+    );
 
     if (!token) {
       setError("No token provided");
@@ -62,7 +77,7 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
         Authorization: `Bearer ${token}`,
       };
 
-      // Fetch user's repositories in parallel
+      // Fetch user's repositories
       const reposResponse = await fetch(
         `https://api.github.com/user/repos?per_page=100`,
         { headers }
@@ -74,10 +89,10 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
         );
       }
 
-      const repos: Repo[] = await reposResponse.json(); // Type the repos response
+      const repos: Repo[] = await reposResponse.json();
 
       if (repos.length === 0) {
-        setError(`User has no repositories.`);
+        setError(`User has no active repositories.`);
         setIsLoading(false);
         return;
       }
@@ -88,10 +103,9 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
         let page = 1;
         let commits: any[];
 
-        // Keep fetching commits until no more pages
         do {
           const commitsResponse = await fetch(
-            `https://api.github.com/repos/${repo.owner.login}/${repo.name}/commits?since=${startOfYear.toISOString()}&page=${page}&per_page=100`,
+            `https://api.github.com/repos/${repo.owner.login}/${repo.name}/commits?since=${oneYearAgo.toISOString()}&page=${page}&per_page=100`,
             { headers }
           );
           if (!commitsResponse.ok) return [];
@@ -104,23 +118,21 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
         return allCommits;
       };
 
-      // Fetch commits for all repositories in parallel with pagination
-      const commitPromises = repos.map(async (repo: Repo) => {
-        return fetchAllCommits(repo);
-      });
-
-      // Wait for all commit data to be fetched
+      const commitPromises = repos.map(fetchAllCommits);
       const allCommits = await Promise.all(commitPromises);
 
-      // Count commits by month (last year)
-      allCommits.forEach((commits) => {
-        commits.forEach((commit: any) => {
-          const commitDate = new Date(commit.commit.author.date);
-          const commitMonth = commitDate.getMonth(); // Get the month (0-11)
-          if (commitDate >= startOfYear) {
-            commitCounts[commitMonth] += 1;
+      // Filter and count commits from the last 12 months
+      allCommits.flat().forEach((commit) => {
+        const commitDate = new Date(commit.commit.author.date);
+        if (commitDate >= oneYearAgo) {
+          const monthsSinceOneYearAgo =
+            (now.getFullYear() - commitDate.getFullYear()) * 12 +
+            now.getMonth() -
+            commitDate.getMonth();
+          if (monthsSinceOneYearAgo >= 0 && monthsSinceOneYearAgo < 12) {
+            commitCounts[11 - monthsSinceOneYearAgo] += 1;
           }
-        });
+        }
       });
 
       setCommitActivity(commitCounts);
@@ -136,23 +148,12 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
     fetchCommitActivity();
   }, [token]);
 
-  const currentMonthIndex = new Date().getMonth();
-  const rotatedMonths = [
-    ...months.slice(currentMonthIndex + 1),
-    ...months.slice(0, currentMonthIndex + 1),
-  ];
-
-  const rotatedCommitActivity = [
-    ...commitActivity.slice(currentMonthIndex + 1),
-    ...commitActivity.slice(0, currentMonthIndex + 1),
-  ];
-
   const data = {
-    labels: rotatedMonths,
+    labels: months, // Use the dynamic months array
     datasets: [
       {
         label: "Commits",
-        data: rotatedCommitActivity,
+        data: commitActivity,
         backgroundColor: "rgba(41, 128, 185, 0.7)",
         borderColor: "rgba(41, 128, 185, 1)",
         borderWidth: 1,
@@ -213,7 +214,6 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
     },
   };
 
-  // Skeleton loader
   const SkeletonLoader = () => (
     <div className="h-full w-full bg-gray-200 animate-pulse rounded-lg">
       <div className="h-[20px] mb-4 w-1/3 bg-gray-300 rounded"></div>

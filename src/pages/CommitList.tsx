@@ -18,17 +18,32 @@ interface CommitListProps {
 
 const CommitList: React.FC<CommitListProps> = ({ token }) => {
   const [commits, setCommits] = useState<Commit[]>([]);
-  const [filteredCommits, setFilteredCommits] = useState<Commit[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `token ${token}`,
+        },
+      });
+      const userData = await response.json();
+      setAvatarUrl(userData.avatar_url);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
 
   const fetchCommits = async () => {
     if (!token) {
       navigate("/login");
       return;
     }
+
+    setLoading(true);
 
     try {
       const response = await fetch(
@@ -41,19 +56,20 @@ const CommitList: React.FC<CommitListProps> = ({ token }) => {
       );
       const repos = await response.json();
 
-      const allCommits: Commit[] = [];
-      for (let repo of repos) {
-        const commitsResponse = await fetch(
+      const commitRequests = repos.map((repo: any) =>
+        fetch(
           `https://api.github.com/repos/${repo.owner.login}/${repo.name}/commits?per_page=100`,
           {
             headers: {
               Authorization: `token ${token}`,
             },
           }
-        );
-        const commits = await commitsResponse.json();
-        allCommits.push(...commits);
-      }
+        ).then((res) => res.json())
+      );
+
+      const commitsData = await Promise.all(commitRequests);
+
+      const allCommits = commitsData.flat();
 
       allCommits.sort(
         (a, b) =>
@@ -62,7 +78,6 @@ const CommitList: React.FC<CommitListProps> = ({ token }) => {
       );
 
       setCommits(allCommits);
-      setFilteredCommits(allCommits);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching commits:", error);
@@ -70,189 +85,128 @@ const CommitList: React.FC<CommitListProps> = ({ token }) => {
     }
   };
 
-  const groupCommitsByDay = (commits: Commit[]) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  useEffect(() => {
+    fetchUserProfile();
+    fetchCommits();
+  }, [token]);
+
+  const filteredCommits = commits.filter((commit) => {
+    const lowercasedSearchTerm = searchTerm.toLowerCase().trim();
+
+    if (!lowercasedSearchTerm) return true;
+
+    const messageMatch = commit.commit.message
+      .toLowerCase()
+      .includes(lowercasedSearchTerm);
+
+    return messageMatch;
+  });
+
+  const groupCommitsByMonth = (commits: Commit[]) => {
     const grouped: { [key: string]: Commit[] } = {};
 
     commits.forEach((commit) => {
       const commitDate = new Date(commit.commit.author.date);
-      const dayKey = commitDate.toLocaleDateString();
-      if (!grouped[dayKey]) {
-        grouped[dayKey] = [];
+      const monthYear = commitDate.toLocaleString("default", {
+        month: "long",
+        year: "numeric",
+      });
+
+      if (!grouped[monthYear]) {
+        grouped[monthYear] = [];
       }
-      grouped[dayKey].push(commit);
+
+      grouped[monthYear].push(commit);
     });
 
     return grouped;
   };
 
-  const filterCommitsByMonth = (commits: Commit[], month: Date) => {
-    const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-    const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-    return commits.filter((commit) => {
-      const commitDate = new Date(commit.commit.author.date);
-      return commitDate >= startOfMonth && commitDate <= endOfMonth;
-    });
-  };
-
-  const goToNextMonth = () => {
-    const nextMonth = new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth() + 1,
-      1
-    );
-    setCurrentMonth(nextMonth);
-  };
-
-  const goToPreviousMonth = () => {
-    const prevMonth = new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth() - 1,
-      1
-    );
-    setCurrentMonth(prevMonth);
-  };
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    if (e.target.value === "") {
-      setFilteredCommits(commits);
-    } else {
-      const lowercasedSearchTerm = e.target.value.toLowerCase();
-      const filtered = commits.filter(
-        (commit) =>
-          commit.commit.message.toLowerCase().includes(lowercasedSearchTerm) ||
-          commit.commit.author.date.includes(lowercasedSearchTerm)
-      );
-      setFilteredCommits(filtered);
-    }
-  };
-
-  useEffect(() => {
-    fetchCommits();
-  }, [token]);
-
-  const monthlyCommits = filterCommitsByMonth(commits, currentMonth);
-  const groupedCommits = groupCommitsByDay(monthlyCommits);
-
-  const isCurrentMonth =
-    currentMonth.getMonth() === new Date().getMonth() &&
-    currentMonth.getFullYear() === new Date().getFullYear();
-
-  // Skeleton Loader Component
-  const SkeletonLoader = () => (
-    <div className="absolute top-0 left-0 w-full h-full bg-[#041e42] bg-opacity-60 flex justify-center items-center z-50">
-      <div className="flex flex-col space-y-4 w-full max-w-lg">
-        <div className="w-full h-10 bg-gray-300 animate-pulse rounded-md"></div>
-        <div className="w-full h-10 bg-gray-300 animate-pulse rounded-md"></div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto text-left text-gray-700">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 w-1/2 bg-gray-300 animate-pulse rounded-md"></th>
-                <th className="px-4 py-2 w-1/2 bg-gray-300 animate-pulse rounded-md"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="px-4 py-2 bg-gray-200 animate-pulse"></td>
-                <td className="px-4 py-2 bg-gray-200 animate-pulse"></td>
-              </tr>
-              <tr>
-                <td className="px-4 py-2 bg-gray-200 animate-pulse"></td>
-                <td className="px-4 py-2 bg-gray-200 animate-pulse"></td>
-              </tr>
-              <tr>
-                <td className="px-4 py-2 bg-gray-200 animate-pulse"></td>
-                <td className="px-4 py-2 bg-gray-200 animate-pulse"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (loading) {
-    return (
-      <div className="relative min-h-screen">
-        <SkeletonLoader />
-      </div>
-    );
-  }
+  const groupedCommits = groupCommitsByMonth(filteredCommits);
 
   return (
-    <div className="bg-[#041e42] min-h-screen p-8">
-      <div className="w-full max-w-7xl mx-auto bg-white p-8 rounded-2xl shadow-2xl relative">
+    <div className="bg-[#041e42] min-h-screen pt-8">
+      <div className="w-full max-w-7xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-2xl relative overflow-x-hidden">
         <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
           Commit List
         </h2>
-
         <div className="mb-6">
           <input
             type="text"
-            placeholder="Search commits by message or date"
+            placeholder="Search commits by message"
             value={searchTerm}
             onChange={handleSearch}
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md"
           />
         </div>
-
-        <div className="overflow-x-auto mb-6">
-          <table className="min-w-full table-auto text-left text-gray-700">
-            <thead>
-              <tr>
-                <th className="px-4 py-2">Commit Message</th>
-                <th className="px-4 py-2">Date</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {Object.keys(groupedCommits).map((day) => (
-                <React.Fragment key={day}>
-                  {groupedCommits[day].map((commit) => (
-                    <tr
+        <div className="overflow-x-hidden mb-6">
+          <div className="w-full flex flex-col space-y-4">
+            {loading ? (
+              <>
+                {[...Array(5)].map((_, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between space-x-4"
+                  >
+                    <div className="w-full h-6 bg-gray-300 rounded-full animate-pulse"></div>
+                    <div className="w-2/5 h-6 bg-gray-300 rounded-full animate-pulse"></div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              Object.keys(groupedCommits).map((monthYear) => (
+                <div key={monthYear} className="mb-6">
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+                    {monthYear}
+                  </h3>
+                  {groupedCommits[monthYear].map((commit) => (
+                    <div
                       key={commit.sha}
-                      className="border-b cursor-pointer hover:bg-gray-100 transition-colors"
+                      className="flex items-start border-b cursor-pointer hover:bg-blue-50 transition-colors p-4"
                     >
-                      <td
-                        className="px-4 py-2 text-left hover:opacity-70"
-                        onClick={() => window.open(commit.html_url, "_blank")}
-                      >
-                        {commit.commit.message}
-                      </td>
-                      <td
-                        className="px-4 py-2 text-left hover:opacity-70"
-                        onClick={() => window.open(commit.html_url, "_blank")}
-                      >
-                        {new Date(commit.commit.author.date).toLocaleDateString(
-                          "default",
-                          { weekday: "short", month: "short", day: "numeric" }
+                      <div className="flex items-center space-x-4">
+                        {avatarUrl && (
+                          <img
+                            src={avatarUrl}
+                            alt="User Avatar"
+                            className="w-10 h-10 rounded-full"
+                          />
                         )}
-                      </td>
-                    </tr>
+                        <div className="flex-1 text-left text-sm sm:text-base text-gray-800">
+                          <div
+                            onClick={() =>
+                              window.open(commit.html_url, "_blank")
+                            }
+                            className="whitespace-normal break-words"
+                          >
+                            {commit.commit.message}
+                          </div>
+                          <div
+                            className="mt-2 text-sm sm:text-base text-gray-500 font-medium"
+                            onClick={() =>
+                              window.open(commit.html_url, "_blank")
+                            }
+                          >
+                            {new Date(
+                              commit.commit.author.date
+                            ).toLocaleDateString("default", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex justify-between items-center mt-6">
-          <button
-            onClick={goToPreviousMonth}
-            className="text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:bg-blue-700 px-4 py-2 rounded-md transition-colors"
-          >
-            Previous Month
-          </button>
-
-          {!isCurrentMonth && (
-            <button
-              onClick={goToNextMonth}
-              className="text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:bg-blue-700 px-4 py-2 rounded-md transition-colors"
-            >
-              Next Month
-            </button>
-          )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

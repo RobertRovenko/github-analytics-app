@@ -1,10 +1,10 @@
 # GitHub Analytics
 
-Welcome to **GitHub Analytics**! This is a simple project that allows you to explore GitHub repositories with detailed statistics.
+Welcome to **GitHub Analytics**!
 
 You can try the live version of the app here:
 
-[Visit GitHub Analytics](https://github-analytics-ecmp0muqm-roberts-projects-bf534023.vercel.app/)
+[Visit GitHub Analytics](https://github-analytics-app.vercel.app/)
 
 ## Tech Stack
 
@@ -31,3 +31,6 @@ Then, start the development server:
 
 npm start
 This will run the app locally at http://localhost:3000.
+
+![GitHub-Insights-Dashboard-11-18-2024_04_12_PM](https://github.com/user-attachments/assets/96e2e708-e160-48f6-8c80-46ee5cbd13a6)
+

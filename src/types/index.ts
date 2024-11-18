@@ -1,6 +1,3 @@
-// src/types/index.ts
-
-// GitHub User Data - Fetched from /users/{username}
 export interface GitHubUser {
   login: string;
   id: number;

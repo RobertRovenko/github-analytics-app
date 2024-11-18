@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchUserProfile, fetchCommits } from "../services/githubApi";
 
 interface Commit {
   sha: string;
@@ -23,87 +24,40 @@ const CommitList: React.FC<CommitListProps> = ({ token }) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const fetchUserProfile = async () => {
-    try {
-      const response = await fetch("https://api.github.com/user", {
-        headers: {
-          Authorization: `token ${token}`,
-        },
-      });
-      const userData = await response.json();
-      setAvatarUrl(userData.avatar_url);
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    }
-  };
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const userData = await fetchUserProfile(token);
+        setAvatarUrl(userData.avatar_url);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
 
-  const fetchCommits = async () => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    const loadCommits = async () => {
+      try {
+        const allCommits = await fetchCommits(token);
+        setCommits(allCommits);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching commits:", error);
+        setLoading(false);
+      }
+    };
 
-    setLoading(true);
-
-    try {
-      const response = await fetch(
-        `https://api.github.com/user/repos?per_page=100`,
-        {
-          headers: {
-            Authorization: `token ${token}`,
-          },
-        }
-      );
-      const repos = await response.json();
-
-      const commitRequests = repos.map((repo: any) =>
-        fetch(
-          `https://api.github.com/repos/${repo.owner.login}/${repo.name}/commits?per_page=100`,
-          {
-            headers: {
-              Authorization: `token ${token}`,
-            },
-          }
-        ).then((res) => res.json())
-      );
-
-      const commitsData = await Promise.all(commitRequests);
-
-      const allCommits = commitsData.flat();
-
-      allCommits.sort(
-        (a, b) =>
-          new Date(b.commit.author.date).getTime() -
-          new Date(a.commit.author.date).getTime()
-      );
-
-      setCommits(allCommits);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching commits:", error);
-      setLoading(false);
-    }
-  };
+    loadUserProfile();
+    loadCommits();
+  }, [token, navigate]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  useEffect(() => {
-    fetchUserProfile();
-    fetchCommits();
-  }, [token]);
-
   const filteredCommits = commits.filter((commit) => {
     const lowercasedSearchTerm = searchTerm.toLowerCase().trim();
-
     if (!lowercasedSearchTerm) return true;
 
-    const messageMatch = commit.commit.message
-      .toLowerCase()
-      .includes(lowercasedSearchTerm);
-
-    return messageMatch;
+    return commit.commit.message.toLowerCase().includes(lowercasedSearchTerm);
   });
 
   const groupCommitsByMonth = (commits: Commit[]) => {
@@ -119,7 +73,6 @@ const CommitList: React.FC<CommitListProps> = ({ token }) => {
       if (!grouped[monthYear]) {
         grouped[monthYear] = [];
       }
-
       grouped[monthYear].push(commit);
     });
 

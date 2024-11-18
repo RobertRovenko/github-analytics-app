@@ -35,6 +35,10 @@ const Dashboard = () => {
     };
 
     getUserData();
+
+    const intervalId = setInterval(getUserData, 900000);
+
+    return () => clearInterval(intervalId);
   }, [navigate]);
 
   const handleLogout = () => {
@@ -74,7 +78,8 @@ const Dashboard = () => {
               <img
                 src={userData.avatar_url}
                 alt="Profile Picture"
-                className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
+                className="w-24 h-24 rounded-full border-4 border-white shadow-lg cursor-pointer transition-transform duration-300 transform hover:scale-110"
+                onClick={() => window.open(userData.html_url, "_blank")}
               />
             </div>
 

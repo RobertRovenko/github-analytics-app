@@ -8,15 +8,9 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { fetchCommitActivity } from "../services/githubApi";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
-
-interface Repo {
-  name: string;
-  owner: {
-    login: string;
-  };
-}
 
 interface CommitFrequencyChartProps {
   token: string | null;
@@ -31,7 +25,6 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Dynamically calculate the months array based on the current month
   const getMonths = () => {
     const now = new Date();
     const months = [
@@ -52,104 +45,35 @@ const CommitFrequencyChart: React.FC<CommitFrequencyChartProps> = ({
     for (let i = 0; i < 12; i++) {
       dynamicMonths.push(months[(now.getMonth() - i + 12) % 12]);
     }
-    return dynamicMonths.reverse(); // Reverse to make the current month last
+    return dynamicMonths.reverse();
   };
 
   const months = getMonths();
 
-  const fetchCommitActivity = async () => {
-    const commitCounts = Array(12).fill(0);
-    const now = new Date();
-    const oneYearAgo = new Date(
-      now.getFullYear() - 1,
-      now.getMonth() + 1, // Set to start of last year's current month
-      1
-    );
-
-    if (!token) {
-      setError("No token provided");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${token}`,
-      };
-
-      // Fetch user's repositories
-      const reposResponse = await fetch(
-        `https://api.github.com/user/repos?per_page=100`,
-        { headers }
-      );
-
-      if (!reposResponse.ok) {
-        throw new Error(
-          `Failed to fetch repositories: ${reposResponse.status}`
-        );
-      }
-
-      const repos: Repo[] = await reposResponse.json();
-
-      if (repos.length === 0) {
-        setError(`User has no active repositories.`);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!token) {
+        setError("No token provided");
         setIsLoading(false);
         return;
       }
 
-      // Function to handle pagination for commits
-      const fetchAllCommits = async (repo: Repo) => {
-        let allCommits: any[] = [];
-        let page = 1;
-        let commits: any[];
+      try {
+        const data = await fetchCommitActivity(token);
+        setCommitActivity(data);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching commit activity:", error);
+        setError("Failed to fetch commit data.");
+        setIsLoading(false);
+      }
+    };
 
-        do {
-          const commitsResponse = await fetch(
-            `https://api.github.com/repos/${repo.owner.login}/${repo.name}/commits?since=${oneYearAgo.toISOString()}&page=${page}&per_page=100`,
-            { headers }
-          );
-          if (!commitsResponse.ok) return [];
-
-          commits = await commitsResponse.json();
-          allCommits = [...allCommits, ...commits];
-          page++;
-        } while (commits.length > 0);
-
-        return allCommits;
-      };
-
-      const commitPromises = repos.map(fetchAllCommits);
-      const allCommits = await Promise.all(commitPromises);
-
-      // Filter and count commits from the last 12 months
-      allCommits.flat().forEach((commit) => {
-        const commitDate = new Date(commit.commit.author.date);
-        if (commitDate >= oneYearAgo) {
-          const monthsSinceOneYearAgo =
-            (now.getFullYear() - commitDate.getFullYear()) * 12 +
-            now.getMonth() -
-            commitDate.getMonth();
-          if (monthsSinceOneYearAgo >= 0 && monthsSinceOneYearAgo < 12) {
-            commitCounts[11 - monthsSinceOneYearAgo] += 1;
-          }
-        }
-      });
-
-      setCommitActivity(commitCounts);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error fetching commit activity:", error);
-      setError("Failed to fetch commit data.");
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCommitActivity();
+    fetchData();
   }, [token]);
 
   const data = {
-    labels: months, // Use the dynamic months array
+    labels: months,
     datasets: [
       {
         label: "Commits",

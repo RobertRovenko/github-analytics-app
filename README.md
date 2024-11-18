@@ -26,11 +26,12 @@ git clone https://github.com/your-username/github-analytics.git
 2. Install Dependencies and Run the App
    Navigate to the project directory and install the required dependencies:
 
-npm install
+- npm install
+
 Then, start the development server:
 
-npm start
-This will run the app locally at http://localhost:3000.
+- npm start
+
+This will run the app locally, usually at http://localhost:3000.
 
 ![GitHub-Insights-Dashboard-11-18-2024_04_12_PM](https://github.com/user-attachments/assets/96e2e708-e160-48f6-8c80-46ee5cbd13a6)
-
